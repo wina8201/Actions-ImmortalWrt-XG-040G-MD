@@ -1,4 +1,4 @@
-name: Dual-Branch-Build
+name: Dual-Branch-Build-01
 
 on:
   workflow_dispatch:
@@ -103,7 +103,6 @@ jobs:
       fail-fast: false
     env:
       REPO_BRANCH: ${{ matrix.branch }}
-      CONFIG_NAME: ${{ matrix.config }}
       CONFIG_FILE: ${{ matrix.config }}.config
 
     steps:
@@ -182,22 +181,7 @@ jobs:
     - name: Check Printer Config(检测是否为打印机配置)
       id: check_print
       run: |
-        CONFIG_PATH="$GITHUB_WORKSPACE/${CONFIG_NAME}.config"
-        if [ ! -f "$CONFIG_PATH" ] && [ -f "$GITHUB_WORKSPACE/config/${CONFIG_NAME}.config" ]; then
-          CONFIG_PATH="$GITHUB_WORKSPACE/config/${CONFIG_NAME}.config"
-        fi
-        if [ ! -s "$CONFIG_PATH" ]; then
-          echo "Config file not found: ${CONFIG_NAME}.config" >&2
-          exit 1
-        fi
-        if ! head -n 1 "$CONFIG_PATH" | grep -q '^CONFIG_TARGET_'; then
-          echo "Invalid OpenWrt seed config: $CONFIG_PATH" >&2
-          sed -n '1,12l' "$CONFIG_PATH" >&2
-          exit 1
-        fi
-        echo "CONFIG_FILE=$CONFIG_PATH" >> $GITHUB_ENV
-
-        if grep -qE "CONFIG_PACKAGE_cups|CONFIG_PACKAGE_luci-app-cups|printing" "$CONFIG_PATH"; then
+        if grep -qE "CONFIG_PACKAGE_cups|CONFIG_PACKAGE_luci-app-cups|printing" "$CONFIG_FILE"; then
           echo "enabled=true" >> $GITHUB_OUTPUT
           echo "PRINTER_ENABLED=true" >> $GITHUB_ENV
         else
@@ -243,18 +227,8 @@ jobs:
 
     - name: Load Custom Configuration(加载自定义配置)
       run: |
-        cp "$CONFIG_FILE" "$OPENWRT_PATH/.config"
+        mv "$CONFIG_FILE" "$OPENWRT_PATH/.config"
         cd $OPENWRT_PATH
-        dos2unix .config >/dev/null 2>&1 || true
-        sed -i '1s/^\xEF\xBB\xBF//' .config
-        if ! head -n 1 .config | grep -q '^CONFIG_TARGET_'; then
-          echo "Invalid .config after copy from $CONFIG_FILE" >&2
-          file .config >&2 || true
-          sed -n '1,12l' .config >&2
-          exit 1
-        fi
-        echo "Using config: $CONFIG_FILE"
-        sed -n '1,8l' .config
         if grep -qE "CONFIG_PACKAGE_cups|CONFIG_PACKAGE_luci-app-cups|printing" .config; then
           echo "🖨️ 检测到打印机配置，追加 cups 相关依赖"
           echo "CONFIG_PACKAGE_cups=y" >> .config

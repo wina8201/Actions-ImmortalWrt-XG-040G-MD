@@ -103,7 +103,7 @@ jobs:
       fail-fast: false
     env:
       REPO_BRANCH: ${{ matrix.branch }}
-      CONFIG_FILE: ${{ matrix.config }}.config
+      CONFIG_FILE: config/${{ matrix.config }}.config
 
     steps:
     - name: Check Server Performance(检查服务器性能)
